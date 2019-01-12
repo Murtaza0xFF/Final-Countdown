@@ -2,7 +2,9 @@ package com.murtaza.finalcountdown
 
 import android.app.Service
 import android.content.Intent
+import android.os.Binder
 import android.os.IBinder
+import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
 import io.reactivex.disposables.Disposable
@@ -17,6 +19,7 @@ class FinalCountDownService : Service() {
     private var countDownProgress: Long = 0
     private val intent = Intent(FinalCountDownService.intentIdentifier)
     private lateinit var disposable: Disposable
+    private val binder = LocalBinder()
 
     override fun onCreate() {
         super.onCreate()
@@ -32,11 +35,20 @@ class FinalCountDownService : Service() {
             .observeOn(AndroidSchedulers.mainThread())
             .doOnNext(({
                 intent.putExtra(FinalCountDownService.extraIdentifier, it.toString().toLong())
-                sendBroadcast(intent)
+                LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
             }))
             .subscribe()
 
         timer.onNext(duration)
+    }
+
+    fun incrementTimer(milliSeconds: Long) {
+        if (duration - countDownProgress < milliSeconds * 1000) {
+            timer.onNext(duration)
+        } else {
+            timer.onNext(countDownProgress + milliSeconds)
+        }
+
     }
 
     override fun onDestroy() {
@@ -44,12 +56,12 @@ class FinalCountDownService : Service() {
         disposable.dispose()
     }
 
-    override fun onStartCommand(intent: Intent, flags: Int, startId: Int): Int {
-        return super.onStartCommand(intent, flags, startId)
+    inner class LocalBinder : Binder() {
+        fun getService(): FinalCountDownService = this@FinalCountDownService
     }
 
-    override fun onBind(arg0: Intent): IBinder? {
-        return null
+    override fun onBind(intent: Intent): IBinder {
+        return binder
     }
 
     companion object {
