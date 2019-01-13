@@ -1,9 +1,16 @@
 package com.murtaza.finalcountdown
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.app.Service
+import android.content.Context
 import android.content.Intent
 import android.os.Binder
+import android.os.Build
 import android.os.IBinder
+import androidx.annotation.RequiresApi
+import androidx.core.app.NotificationCompat
+import androidx.core.app.NotificationManagerCompat
 import androidx.localbroadcastmanager.content.LocalBroadcastManager
 import io.reactivex.Observable
 import io.reactivex.android.schedulers.AndroidSchedulers
@@ -12,39 +19,61 @@ import io.reactivex.schedulers.Schedulers
 import io.reactivex.subjects.BehaviorSubject
 import java.util.concurrent.TimeUnit
 
+
 class FinalCountDownService : Service() {
 
     private val timer = BehaviorSubject.create<Long>()
-    private val duration: Long = 2 * 60 * 1000
+
     private var countDownProgress: Long = 0
-    private val intent = Intent(FinalCountDownService.intentIdentifier)
+    private val intent = Intent(FinalCountDownService.FINAL_COUNTDOWN_INTENT_IDENTIFIER)
     private lateinit var disposable: Disposable
     private val binder = LocalBinder()
+    private val channelId =
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            createNotificationChannel("101", "TimerNotificationChannel")
+        } else {
+            ""
+        }
+    private val notification = NotificationCompat.Builder(this, channelId)
+        .setPriority(NotificationManagerCompat.IMPORTANCE_DEFAULT)
+        .build()
 
     override fun onCreate() {
         super.onCreate()
+        startForeground(1, notification)
         disposable = timer
             .switchMap { time ->
                 Observable.intervalRange(0, time, 0, 1, TimeUnit.MILLISECONDS)
                     .map<Any> { t -> time - t }
+                    .doOnComplete {
+                        broadcastTime(-1)
+                    }
             }
             .doOnNext(({
                 countDownProgress = it.toString().toLong()
+                broadcastTime(it.toString().toLong())
             }))
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
-            .doOnNext(({
-                intent.putExtra(FinalCountDownService.extraIdentifier, it.toString().toLong())
-                LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
-            }))
             .subscribe()
 
-        timer.onNext(duration)
+        timer.onNext(DURATION)
+    }
+
+    @RequiresApi(Build.VERSION_CODES.O)
+    private fun createNotificationChannel(channelId: String, channelName: String): String {
+        val channel = NotificationChannel(
+            channelId,
+            channelName, NotificationManager.IMPORTANCE_NONE
+        )
+        val service = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        service.createNotificationChannel(channel)
+        return channelId
     }
 
     fun incrementTimer(milliSeconds: Long) {
-        if (duration - countDownProgress < milliSeconds * 1000) {
-            timer.onNext(duration)
+        if (DURATION - countDownProgress < milliSeconds) {
+            timer.onNext(DURATION)
         } else {
             timer.onNext(countDownProgress + milliSeconds)
         }
@@ -64,8 +93,16 @@ class FinalCountDownService : Service() {
         return binder
     }
 
+    private fun broadcastTime(countDownProgress: Long) {
+        intent.putExtra(FinalCountDownService.COUNT_DOWN_PROGRESS, countDownProgress)
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent)
+    }
+
     companion object {
-        const val intentIdentifier = "FINAL_COUNTDOWN"
-        const val extraIdentifier = "ITS_THE_FINAL_COUNTDOWN"
+        const val FINAL_COUNTDOWN_INTENT_IDENTIFIER = "FINAL_COUNTDOWN"
+        const val COUNT_DOWN_PROGRESS = "ITS_THE_FINAL_COUNTDOWN"
+        const val DURATION: Long = 2 * 60 * 1000
     }
 }
+
+
