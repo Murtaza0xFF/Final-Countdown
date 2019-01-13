@@ -51,8 +51,11 @@ class MainActivity : AppCompatActivity() {
         val milliseconds = parseInt(((duration % 1000) / 100).toString())
         val seconds = parseInt(((duration / 1000) % 60).toString())
         val minutes = parseInt(((duration / (1000 * 60)) % 60).toString())
-
-        textview.text = String.format("%02d:%02d:%01d", minutes, seconds, milliseconds)
+        if (minutes == 0) {
+            textview.text = String.format("%02d:%01d", seconds, milliseconds)
+        } else {
+            textview.text = String.format("%02d:%02d:%01d", minutes, seconds, milliseconds)
+        }
     }
 
     private fun hideTimer() {

@@ -10,5 +10,4 @@ class FinalCountDownApplication : Application() {
         super.onCreate()
         ContextCompat.startForegroundService(this, Intent(this, FinalCountDownService::class.java))
     }
-
 }

@@ -28,18 +28,18 @@ class FinalCountDownService : Service() {
     private val intent = Intent(FinalCountDownService.FINAL_COUNTDOWN_INTENT_IDENTIFIER)
     private lateinit var disposable: Disposable
     private val binder = LocalBinder()
-    private val channelId =
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            createNotificationChannel("101", "TimerNotificationChannel")
-        } else {
-            ""
-        }
-    private val notification = NotificationCompat.Builder(this, channelId)
-        .setPriority(NotificationManagerCompat.IMPORTANCE_DEFAULT)
-        .build()
 
     override fun onCreate() {
         super.onCreate()
+        val channelId =
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                createNotificationChannel("101", "TimerNotificationChannel")
+            } else {
+                ""
+            }
+        val notification = NotificationCompat.Builder(this, channelId)
+            .setPriority(NotificationManagerCompat.IMPORTANCE_DEFAULT)
+            .build()
         startForeground(1, notification)
         disposable = timer
             .switchMap { time ->
