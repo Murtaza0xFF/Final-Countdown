@@ -45,14 +45,14 @@ class FinalCountDownService : Service() {
             .switchMap { time ->
                 Observable.intervalRange(0, time, 0, 1, TimeUnit.MILLISECONDS)
                     .map<Any> { t -> time - t }
+                    .doOnNext(({
+                        countDownProgress = it.toString().toLong()
+                        broadcastTime(it.toString().toLong())
+                    }))
                     .doOnComplete {
                         broadcastTime(-1)
                     }
             }
-            .doOnNext(({
-                countDownProgress = it.toString().toLong()
-                broadcastTime(it.toString().toLong())
-            }))
             .subscribeOn(Schedulers.io())
             .observeOn(AndroidSchedulers.mainThread())
             .subscribe()
